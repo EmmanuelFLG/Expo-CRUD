@@ -1,4 +1,3 @@
-// InstrumentIndex.tsx
 import React, { useState } from 'react';
 import { FlatList, Text, Button, StyleSheet, View } from 'react-native';
 import InstrumentModal from '@/components/modals/InstrumentModal';
@@ -8,12 +7,15 @@ import { Instruments } from '@/interfaces/Instruments';
 const InstrumentIndex = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [instruments, setInstruments] = useState<Instruments[]>([]);
+  const [editingInstrument, setEditingInstrument] = useState<Instruments | null>(null);
 
   const openModal = () => {
+    setEditingInstrument(null);
     setModalVisible(true);
   };
 
   const closeModal = () => {
+    setEditingInstrument(null);
     setModalVisible(false);
   };
 
@@ -21,6 +23,21 @@ const InstrumentIndex = () => {
     const newId = instruments.length + 1;
     const instrumentWithId = { ...newInstrument, id: newId };
     setInstruments([...instruments, instrumentWithId]);
+  };
+
+  const updateInstrument = (updated: Instruments) => {
+    setInstruments((prev) =>
+      prev.map((item) => (item.id === updated.id ? updated : item))
+    );
+  };
+
+  const deleteInstrument = (id: number) => {
+    setInstruments((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const handleEdit = (instrument: Instruments) => {
+    setEditingInstrument(instrument);
+    setModalVisible(true);
   };
 
   return (
@@ -34,12 +51,14 @@ const InstrumentIndex = () => {
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
           <Instrument
-            key={item.id}
+            id={item.id}
             name={item.name}
             brand={item.brand}
             stock={item.stock}
             description={item.description}
             price={item.price}
+            onEdit={() => handleEdit(item)}
+            onDelete={() => deleteInstrument(item.id)}
           />
         )}
       />
@@ -48,6 +67,8 @@ const InstrumentIndex = () => {
         visible={modalVisible}
         onClose={closeModal}
         onAdd={addInstrument}
+        onUpdate={updateInstrument}
+        editingInstrument={editingInstrument}
       />
     </View>
   );
@@ -62,16 +83,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
-  },
-  instrument: {
-    padding: 10,
-    backgroundColor: '#f8f8f8',
-    marginVertical: 5,
-    borderRadius: 5,
-  },
-  button: {
-    padding: 8,
-    fontSize: 14,
   },
 });
 
