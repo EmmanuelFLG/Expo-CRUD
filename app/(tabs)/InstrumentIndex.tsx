@@ -1,13 +1,46 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FlatList, Text, Button, StyleSheet, View } from 'react-native';
 import InstrumentModal from '@/components/modals/InstrumentModal';
 import Instrument from '@/components/instrument/Instrument';
 import { Instruments } from '@/interfaces/Instruments';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
 
 const InstrumentIndex = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [instruments, setInstruments] = useState<Instruments[]>([]);
   const [editingInstrument, setEditingInstrument] = useState<Instruments | null>(null);
+
+
+  const [location, setLocation] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    async function getData() {
+      try {
+        const data = await AsyncStorage.getItem('@InstrumentsApp:instruments');
+        const instrumentsData = data != null ? JSON.parse(data) : [];
+        setInstruments(instrumentsData);
+      } catch (e) {
+        console.error('Error retrieving data from AsyncStorage', e);
+      }
+    }
+
+    getData();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      {if (status !== 'granted')
+        setErrorMsg('Permission to access location was denied');
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync({});
+      setLocation(JSON.stringify(location));
+    })();
+  }, []);
 
   const openModal = () => {
     setEditingInstrument(null);
@@ -22,17 +55,23 @@ const InstrumentIndex = () => {
   const addInstrument = (newInstrument: Omit<Instruments, 'id'>) => {
     const newId = instruments.length + 1;
     const instrumentWithId = { ...newInstrument, id: newId };
-    setInstruments([...instruments, instrumentWithId]);
+    const updatedList = [...instruments, instrumentWithId];
+    setInstruments(updatedList);
+    AsyncStorage.setItem('@InstrumentsApp:instruments', JSON.stringify(updatedList));
   };
 
   const updateInstrument = (updated: Instruments) => {
-    setInstruments((prev) =>
-      prev.map((item) => (item.id === updated.id ? updated : item))
+    const updatedList = instruments.map((item) =>
+      item.id === updated.id ? updated : item
     );
+    setInstruments(updatedList);
+    AsyncStorage.setItem('@InstrumentsApp:instruments', JSON.stringify(updatedList));
   };
 
   const deleteInstrument = (id: number) => {
-    setInstruments((prev) => prev.filter((item) => item.id !== id));
+    const updatedList = instruments.filter((item) => item.id !== id);
+    setInstruments(updatedList);
+    AsyncStorage.setItem('@InstrumentsApp:instruments', JSON.stringify(updatedList));
   };
 
   const handleEdit = (instrument: Instruments) => {
@@ -70,6 +109,10 @@ const InstrumentIndex = () => {
         onUpdate={updateInstrument}
         editingInstrument={editingInstrument}
       />
+
+      <Text style={{ marginTop: 20 }}>
+        {errorMsg ? `Erro: ${errorMsg}` : `Localização: ${location}`}
+      </Text>
     </View>
   );
 };
